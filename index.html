@@ -258,6 +258,9 @@ let A=S.profile?Object.assign({},S.profile):{};
 let view=S.plan?'tracker':'start',qi=0,stopKind='',hint='',sel=today(),pendingPlan=null;
 let meal=defaultMeal(),logMsg='',logErr=false,summary='',restoreArmed=false,recent=[];
 let fd={mName:'',mPortion:'',mKcal:'',mP:'',mC:'',mF:''};
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(view==='start'||view==='tracker')softRender();});
+window.addEventListener('appinstalled',()=>{installEvt=null;if(view==='start'||view==='tracker')softRender();});
 let foodQ='',online=[],shown=[],searching=false,foodMsg='',picked=null,manualOpen=false;
 let lastKcal=0,lastRing={};
 function defaultMeal(){const h=new Date().getHours();return h<11?'fruehstueck':h<15?'mittag':h<21?'abend':'snacks';}
@@ -334,8 +337,9 @@ function restoreBlock(){return `<textarea class="code" id="restoreText" placehol
 function installHint(){
   const installed=navigator.standalone||matchMedia('(display-mode: standalone)').matches;
   if(installed)return '';
+  if(installEvt)return '<button class="btn ghost" data-act="install">Als App installieren</button>';
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent);
-  return `<div class="note small"><b>Als App installieren:</b> ${ios?'Tippe in Safari auf Teilen und dann auf „Zum Home-Bildschirm“.':'Öffne das Browser-Menü und wähle „App installieren“ oder „Zum Startbildschirm“.'}</div>`;
+  return `<div class="note small"><b>Als App installieren:</b> ${ios?'Tippe in Safari auf Teilen und dann auf „Zum Home-Bildschirm“.':'Öffne das Chrome-Menü mit den drei Punkten und wähle „App installieren“. Steht dort „Zum Startbildschirm hinzufügen“, wähle danach „Installieren“ und nicht „Verknüpfung“.'}</div>`;
 }
 function vQ(){
   const l=visQ();if(qi>=l.length)qi=l.length-1;
@@ -488,6 +492,7 @@ function vTracker(){
    ${restoreBlock()}
   </div></details>
 
+  ${installEvt?installHint():''}
   <button class="link" data-act="showplan" style="text-align:center">Plan ansehen oder ändern</button>
   <p class="foot">Ich bin eine KI, kein medizinisches Fachpersonal. Sprich mit deinem Hausarzt, bevor du eine neue Ernährungsform startest.</p>`;
 }
@@ -817,6 +822,7 @@ document.addEventListener('click',e=>{
   else if(a==='now'){sel=today();lastKcal=totals(sel).kcal;summary='';render();}
   else if(a==='w+'||a==='w-'){const d=day(sel);d.water=Math.max(0,(d.water||0)+(a==='w+'?250:-250));persist();render();}
   else if(a==='meal'){meal=b.dataset.v;render();}
+  else if(a==='install'&&installEvt){const ev=installEvt;installEvt=null;ev.prompt();render();}
   else if(a==='scan')openScanner();
   else if(a==='scanclose')closeScanner();
   else if(a==='food'){const f=shown[Number(b.dataset.i)];if(f)pickFood(f);}
