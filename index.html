@@ -455,6 +455,8 @@ function vTracker(){
     <div class="row" style="gap:8px"><button class="step" data-act="w-" aria-label="250 ml weniger">−</button><button class="step" data-act="w+" aria-label="250 ml mehr">+</button></div></div>
    <div class="water-bar"><i style="width:${Math.min(100,(d.water||0)/10/p.water)}%"></i></div></div>
 
+  <div class="card"><div class="row between"><div><b>Training</b><br><span class="small muted">Sätze, kg und Fortschritt</span></div><button class="btn small" data-act="training">Öffnen</button></div></div>
+
   <div class="card"><h2 style="font-size:18px">Essen eintragen</h2>
    <div class="chips">${MEALS.map(m=>`<button class="chip" data-act="meal" data-v="${m[0]}" aria-pressed="${meal===m[0]}">${m[1]}</button>`).join('')}</div>
    ${recent.length?`<span class="label">Nochmal eintragen</span><div class="again">${recent.map((r,i)=>`<button class="chip" data-act="again" data-i="${i}">${esc(r.name)} · ${de(r.kcal)}</button>`).join('')}</div>`:''}
@@ -816,6 +818,7 @@ document.addEventListener('click',e=>{
   else if(a==='adjust'){A=Object.assign({},(pendingPlan||S).profile);view='q';qi=0;render();}
   else if(a==='accept'){if(pendingPlan){S.profile=pendingPlan.profile;S.plan=pendingPlan.plan;pendingPlan=null;persist();}view='tracker';sel=today();render();}
   else if(a==='showplan'){pendingPlan=null;view='plan';render();}
+  else if(a==='training'){location.href='training.html';}
   else if(a==='theme'){const t=isDark()?'light':'dark';document.documentElement.dataset.theme=t;lsSet('coach-theme',t);render();}
   else if(a==='prev'){sel=addDays(sel,-1);lastKcal=totals(sel).kcal;summary='';render();}
   else if(a==='fwd'){sel=addDays(sel,1);lastKcal=totals(sel).kcal;summary='';render();}
