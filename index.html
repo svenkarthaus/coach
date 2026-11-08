@@ -464,7 +464,7 @@ function vTracker(){
    <button class="btn ghost scan" data-act="scan">${icon.code}Barcode scannen</button>
    ${picked?pickPanel():`<div class="results" id="results">${resultsHtml()}</div>`}
    <p class="small muted" id="foodMsg" ${foodMsg?'':'hidden'}>${esc(foodMsg)}</p>
-   <button class="link" data-act="manual">${manualOpen?'Eingabe von Hand schließen':'Von Hand eintragen'}</button>
+   <button class="btn ghost" data-act="manual">${manualOpen?'Eingabe schließen':'Eigenes Essen eintragen (kcal, Protein …)'}</button>
    ${manualOpen?`<form id="manual" class="grid2" novalidate>
      <label class="mini" style="grid-column:1/-1">Lebensmittel<input id="mName" value="${esc(fd.mName)}" autocomplete="off"></label>
      <label class="mini" style="grid-column:1/-1">Portion<input id="mPortion" placeholder="z. B. 150 g" value="${esc(fd.mPortion)}" autocomplete="off"></label>

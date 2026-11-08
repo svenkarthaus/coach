@@ -50,13 +50,18 @@ main{padding:12px 14px}
 .tag{display:inline-block;font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:1px 8px;margin-top:3px}
 .hint{font-size:12.5px;color:var(--acc2);margin:6px 0 2px}
 .last{font-size:12px;color:var(--mut);margin:6px 0}
-.sethead,.set{display:grid;grid-template-columns:34px 1fr 1fr 54px 40px;gap:6px;align-items:center}
+.sethead,.set{display:grid;grid-template-columns:34px 1fr 1fr 54px 44px;gap:6px;align-items:center}
+.sethead.norir,.set.norir{grid-template-columns:34px 1fr 1fr 48px}
+.mus{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.mt{padding:20px 8px;font-size:17px;font-weight:700;border-radius:16px;background:var(--card2)}
+.mt:active{background:var(--acc);color:#fff}
+.sumline{font-weight:700;font-size:15px;align-self:center}
 .sethead{font-size:10.5px;color:var(--mut);text-transform:uppercase;text-align:center;margin:8px 0 4px;letter-spacing:.4px}
 .set{margin-bottom:6px}
 .set input{text-align:center;font-weight:700;font-size:16px;padding:9px 2px}
 .set .ty{padding:8px 0;font-weight:800;text-align:center;font-size:13px}
 .set .ty.W{color:var(--warn)}.set .ty.D{color:#a78bfa}.set .ty.F{color:#ff6b6b}
-.set .ck{padding:8px 0;font-size:17px;line-height:1}
+.set .ck{padding:10px 0;font-size:18px;line-height:1}
 .set.done input{background:var(--okbg);border-color:var(--okline)}
 .set.done .ck{background:var(--ok);color:#fff;border-color:var(--ok);font-weight:900}
 .set .e1{grid-column:2/5;font-size:11px;color:var(--mut);margin:-3px 0 0;text-align:center;display:none}
@@ -208,22 +213,15 @@ document.getElementById('nav').onclick=e=>{const b=e.target.closest('button');if
 function vTrain(){
   const d=S.draft;
   if(!d)return `<div class="card">
-    <h2 style="margin-bottom:10px">Neues Training</h2>
-    <label class="l">Split / Tag</label>
-    <div class="chips" style="flex-wrap:wrap">${SPLITS.map(s=>`<button class="chip" data-a="start" data-v="${s}">${s}</button>`).join('')}</div>
-    ${recentBlock()}
-  </div>`;
+    <h2 style="margin-bottom:2px">Was trainierst du heute?</h2>
+    <div class="h">Tippe einen Muskel an und wähle deine Übung.</div>
+    <div class="mus">${MUSCLES.map(m=>`<button class="mt" data-a="muscle" data-v="${m}">${m}</button>`).join('')}</div>
+  </div>${recentBlock()}`;
   return `
-  <div class="row"><input type="date" id="dDate" value="${d.date}" class="fit" style="max-width:150px"><select id="dSplit">${SPLITS.map(s=>`<option ${s===d.split?'selected':''}>${s}</option>`).join('')}</select></div>
-  <div class="stats">
-    <div class="stat"><b id="tS">0</b><span>Sätze</span></div>
-    <div class="stat"><b id="tV">0</b><span>Vol. kg</span></div>
-    <div class="stat"><b id="tD">0</b><span>Min.</span></div>
-    <div class="stat"><b id="tE">${d.ex.length}</b><span>Übungen</span></div>
-  </div>
+  <div class="row" style="margin-bottom:8px"><div class="sumline" id="sum"></div><input type="date" id="dDate" value="${d.date}" class="fit" style="max-width:140px"></div>
   ${d.ex.map((e,i)=>exCard(e,i)).join('')}
   <button class="add pri" data-a="pick">+ Übung hinzufügen</button>
-  <textarea id="dNote" rows="2" placeholder="Notizen (Schlaf, Form, Gefühl …)">${esc(d.note||'')}</textarea>
+  <textarea id="dNote" rows="2" placeholder="Notiz (optional)">${esc(d.note||'')}</textarea>
   <div class="row" style="margin-top:10px">
     <button class="danger" data-a="discard">Verwerfen</button>
     <button class="pri" data-a="finish" style="flex:2">Training beenden ✔</button>
@@ -231,8 +229,8 @@ function vTrain(){
 }
 function recentBlock(){
   const ws=sortedW().slice(-3).reverse();
-  if(!ws.length)return `<p class="h" style="margin-top:12px">Wähle deinen Trainingstag. Beim ersten Mal baust du dein Training Übung für Übung auf – danach schlägt dir die App das letzte Mal automatisch vor.</p>`;
-  return `<label class="l" style="margin-top:14px">Letztes Training wiederholen</label>`+ws.map(w=>`<div class="li"><div><b>${esc(w.split)}</b> <small>${fmtD(w.date)} · ${w.ex.length} Übungen</small></div><button data-a="repeat" data-v="${w.id}">Laden</button></div>`).join('');
+  if(!ws.length)return '';
+  return `<div class="card"><h3 style="margin-bottom:4px">Letztes Training wiederholen</h3>`+ws.map(w=>`<div class="li"><div><b>${esc(w.split)}</b> <small>${fmtD(w.date)} · ${w.ex.length} Übungen</small></div><button data-a="repeat" data-v="${w.id}">Laden</button></div>`).join('')+`</div>`;
 }
 function exCard(e,i){
   const info=exInfo(e.id),[lo,hi,lbl]=tgt(e.id),ls=lastSession(e.id);
@@ -241,28 +239,27 @@ function exCard(e,i){
   let sessBest=0,prIdx=-1;
   e.sets.forEach((s,k)=>{if(isWork(s)&&s.d){const v=e1rm(s.kg,s.r);if(v>sessBest){sessBest=v;prIdx=k}}});
   const isPR=bestHist>0&&sessBest>bestHist*1.0001;
-  const first=!ls&&sessBest>0;
+  const first=false;
   let wn=0;
   return `<div class="card" data-i="${i}">
-    <div class="exh"><div><h3>${esc(info.name)}</h3><span class="tag">${info.muscle}</span> <span class="tag" data-a="tgt" data-i="${i}" style="cursor:pointer">🎯 ${lbl}</span></div>
+    <div class="exh"><div><h3>${esc(info.name)}</h3><span class="tag">${info.muscle}</span><span class="tag" data-a="tgt" data-i="${i}" style="cursor:pointer;margin-left:4px">Ziel ${lo}–${hi} Wdh ↻</span></div>
       <button class="ghost" data-a="exmenu" data-i="${i}" style="padding:4px 10px;font-size:20px">⋯</button></div>
     ${ls?`<div class="last">Letztes Mal (${fmtD(ls.w.date)}): ${ls.e.sets.filter(isWork).map(s=>fmt(s.kg)+'×'+s.r).join(' · ')}</div>`:`<div class="last">Neue Übung – noch keine Historie</div>`}
     ${hintFor(e.id)?`<div class="hint">${hintFor(e.id)}</div>`:''}
-    <div class="sethead"><span>Satz</span><span>kg</span><span>Wdh</span><span>RIR</span><span></span></div>
+    <div class="sethead ${S.rir?'':'norir'}"><span>Satz</span><span>kg</span><span>Wdh</span>${S.rir?'<span>RIR</span>':''}<span></span></div>
     ${e.sets.map((s,k)=>{
       const t=s.t||'A';if(t==='A')wn++;
       const lab=t==='A'?wn:t;
       const pr=(isPR||first)&&k===prIdx;
-      return `<div class="set ${s.d?'done':''}" data-k="${k}">
+      return `<div class="set ${s.d?'done':''} ${S.rir?'':'norir'}" data-k="${k}">
         <button class="ty ${t}" data-a="type" data-i="${i}" data-k="${k}">${lab}</button>
         <input inputmode="decimal" data-f="kg" data-i="${i}" data-k="${k}" value="${s.kg||''}" placeholder="${ls?'':'kg'}">
         <input inputmode="numeric" data-f="r" data-i="${i}" data-k="${k}" value="${s.r||''}" placeholder="${lo}-${hi}">
-        <input inputmode="numeric" data-f="rir" data-i="${i}" data-k="${k}" value="${s.rir===''||s.rir==null?'':s.rir}" placeholder="–">
+        ${S.rir?`<input inputmode="numeric" data-f="rir" data-i="${i}" data-k="${k}" value="${s.rir===''||s.rir==null?'':s.rir}" placeholder="–">`:''}
         <button class="ck" data-a="done" data-i="${i}" data-k="${k}">${s.d?'✓':'○'}</button>
       </div>${pr?`<div class="last" style="margin:-2px 0 6px"><span class="pr">PR</span> Neuer Bestwert: geschätztes 1RM ${fmt(sessBest)} kg</div>`:''}`}).join('')}
     <div class="mini">
       <button data-a="addset" data-i="${i}">+ Satz</button>
-      <button data-a="dupset" data-i="${i}">⧉ Wie davor</button>
       <button data-a="delset" data-i="${i}">− Satz</button>
     </div>
     ${(()=>{const v=exVolume(e);return v?`<div class="last" style="margin-top:8px">Volumen: ${fmt(v)} kg</div>`:''})()}
@@ -270,10 +267,8 @@ function exCard(e,i){
 }
 function updateTotals(){
   const d=S.draft;if(!d)return;
-  const t=totals(d);
-  const set=(id,v)=>{const x=document.getElementById(id);if(x)x.textContent=v};
-  set('tS',t.sets);set('tV',fmt(t.vol));set('tE',d.ex.length);
-  set('tD',Math.max(0,Math.round((Date.now()-d.start)/60000)));
+  const t=totals(d),x=document.getElementById('sum');
+  if(x)x.textContent=t.sets+' Sätze · '+fmt(t.vol)+' kg · '+Math.max(0,Math.round((Date.now()-d.start)/60000))+' Min.';
 }
 setInterval(()=>{if(tab==='train')updateTotals()},30000);
 
@@ -374,6 +369,7 @@ function vMore(){
     <div class="chips">${[60,90,120,150,180,240].map(s=>`<button class="chip ${S.rest===s?'on':''}" data-a="rest" data-v="${s}">${s>=120?(s/60)+' min':s+' s'}</button>`).join('')}</div>
     <div class="h">Startet automatisch, sobald du einen Satz abhakst. Schwere Grundübungen: 2–3 min, Isolationsübungen: 60–90 s.</div>
   </div>
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>RIR-Spalte anzeigen</b><br><span class="h">Wiederholungen in Reserve pro Satz</span></div><button data-a="rirtog" style="flex:none">${S.rir?'An':'Aus'}</button></div></div>
   <div class="card"><h3>Eigene Übung</h3>
     <label class="l">Name</label><input id="cName" placeholder="z. B. Smith-Machine Schrägbankdrücken">
     <label class="l">Muskelgruppe</label><select id="cMus">${MUSCLES.map(m=>`<option>${m}</option>`).join('')}</select>
@@ -386,7 +382,7 @@ function vMore(){
     <div class="h" style="margin-top:10px">${S.workouts.length} Trainings gespeichert</div>
   </div>
   <div class="card"><h3>So trainierst du richtig</h3>
-    <div class="h" style="line-height:1.55">• <b>RIR</b> = Wiederholungen „in Reserve“ (0 = Muskelversagen). Für Hypertrophie meist 0–3.<br>
+    <div class="h" style="line-height:1.55">• <b>RIR</b> (optional, unter „Mehr“ einschaltbar) = Wiederholungen „in Reserve“, 0 = Muskelversagen.<br>
     • <b>W</b> Aufwärmsatz, <b>D</b> Dropsatz, Zahl = Arbeitssatz. Nur Arbeits- und Dropsätze zählen fürs Volumen und die Sätze pro Muskel.<br>
     • <b>1RM</b> wird nach Epley geschätzt: kg × (1 + Wdh/30).<br>
     • <b>Progression:</b> Schaffst du in allen Sätzen die obere Wdh-Grenze, erhöhe das Gewicht – die App sagt dir, wann.</div>
@@ -404,7 +400,7 @@ function ask(text,ok,cb,danger){
 }
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1800)}
 
-let pickMus='Alle',pickQ='';
+let pickMus='Brust',pickQ='';
 function pickSheet(){
   const all=[...Object.values(BASE),...S.custom];
   const q=pickQ.trim().toLowerCase();
@@ -413,8 +409,10 @@ function pickSheet(){
   list.sort((a,b)=>(used.has(b.id)?1:0)-(used.has(a.id)?1:0)||a.name.localeCompare(b.name,'de'));
   sheet(`<h3 style="margin-bottom:8px">Übung wählen</h3>
     <input id="pQ" placeholder="Suchen …" value="${esc(pickQ)}">
-    <div class="chips">${['Alle',...MUSCLES].map(m=>`<button class="chip ${m===pickMus?'on':''}" data-pm="${m}">${m}</button>`).join('')}</div>
-    ${list.map(x=>`<div class="li" data-pick="${x.id}"><div>${esc(x.name)}${used.has(x.id)?' <small>★</small>':''}<br><small>${x.muscle}</small></div><span style="color:var(--acc);font-size:22px">+</span></div>`).join('')||'<div class="empty">Nichts gefunden – unter „Mehr“ eigene Übung anlegen.</div>'}`);
+    <div class="chips">${[...MUSCLES,'Alle'].map(m=>`<button class="chip ${m===pickMus?'on':''}" data-pm="${m}">${m}</button>`).join('')}</div>
+    ${q&&!list.some(x=>x.name.toLowerCase()===q)?`<div class="li" id="newEx"><div><b>„${esc(pickQ.trim())}“ als eigene Übung anlegen</b><br><small>${pickMus==='Alle'?'Brust':pickMus}</small></div><span style="color:var(--acc);font-size:22px">+</span></div>`:''}${list.map(x=>`<div class="li" data-pick="${x.id}"><div>${esc(x.name)}${used.has(x.id)?' <small>★</small>':''}<br><small>${x.muscle}</small></div><span style="color:var(--acc);font-size:22px">+</span></div>`).join('')||'<div class="empty">Keine Übung gefunden.</div>'}`);
+  const ne=document.getElementById('newEx');
+  if(ne)ne.onclick=()=>{const n=pickQ.trim(),mu=pickMus==='Alle'?'Brust':pickMus,id='c-'+SLUG(n)+'-'+uid().slice(0,3);S.custom.push({id,name:n,muscle:mu});pickQ='';addExercise(id);closeModal()};
   const q2=document.getElementById('pQ');
   q2.oninput=()=>{pickQ=q2.value;const pos=q2.selectionStart;pickSheet();const n=document.getElementById('pQ');n.focus();n.setSelectionRange(pos,pos)};
   modal.querySelectorAll('[data-pm]').forEach(b=>b.onclick=()=>{pickMus=b.dataset.pm;pickSheet()});
@@ -451,7 +449,8 @@ document.getElementById('tm-').onclick=()=>{tEnd-=15000;tTotal=Math.max(tTotal,1
 document.getElementById('tm+').onclick=()=>{tEnd+=15000;tTotal+=15;if(!tInt||tEl.classList.contains('over')){tEl.classList.remove('over');clearInterval(tInt);tInt=setInterval(tick,250)}tick()};
 
 /* ============ Aktionen ============ */
-function newDraft(split,date){return {id:uid(),date:date||todayStr(),split,start:Date.now(),ex:[],note:''}}
+function newDraft(split,date){return {id:uid(),date:date||todayStr(),split:split||'',start:Date.now(),ex:[],note:''}}
+function splitName(d){const m=[];d.ex.forEach(e=>{const x=exInfo(e.id).muscle;if(!m.includes(x))m.push(x)});return m.slice(0,3).join(' · ')||'Training'}
 function cloneFrom(w){
   const d=newDraft(w.split);
   d.ex=w.ex.map(e=>({id:e.id,sets:e.sets.filter(isWork).map(s=>({kg:s.kg,r:s.r,rir:'',t:s.t==='D'?'A':(s.t||'A'),d:false}))}));
@@ -462,7 +461,7 @@ function finish(){
   d.ex.forEach(e=>e.sets=e.sets.filter(s=>s.d&&s.kg>=0&&s.r>0));
   d.ex=d.ex.filter(e=>e.sets.length);
   if(!d.ex.length){toast('Keine abgehakten Sätze');return false}
-  const w={id:d.id,date:d.date,split:d.split,min:Math.max(1,Math.round((Date.now()-d.start)/60000)),note:d.note||'',
+  const w={id:d.id,date:d.date,split:splitName(d),min:Math.max(1,Math.round((Date.now()-d.start)/60000)),note:d.note||'',
     ex:d.ex.map(e=>({id:e.id,sets:e.sets.map(s=>({kg:s.kg,r:s.r,rir:s.rir===''?'':s.rir,t:s.t||'A'}))}))};
   S.workouts=S.workouts.filter(x=>x.id!==w.id);S.workouts.push(w);S.draft=null;
   save();stopTimer();return true;
@@ -473,18 +472,17 @@ app.addEventListener('click',e=>{
   const a=b.dataset.a,i=+b.dataset.i,k=+b.dataset.k,v=b.dataset.v;
   const d=S.draft;
   switch(a){
-    case 'start':S.draft=newDraft(v);save();render();pickSheet();break;
+    case 'muscle':if(!S.draft)S.draft=newDraft('');pickMus=v;pickQ='';save();render();pickSheet();break;
     case 'repeat':{
       const w=S.workouts.find(x=>x.id===v);if(!w)break;
       const go=()=>{S.draft=cloneFrom(w);save();tab='train';render();toast('Training geladen')};
       S.draft&&S.draft.ex.length?ask('Das aktuelle Training wird ersetzt.','Ersetzen',go,true):go();break}
-    case 'pick':pickMus='Alle';pickQ='';pickSheet();break;
+    case 'pick':pickQ='';pickSheet();break;
     case 'discard':ask('Training wirklich verwerfen?','Verwerfen',()=>{S.draft=null;save();stopTimer();render()},true);break;
     case 'finish':{
       const t=totals(d);
       ask(`Training beenden?<br><small style="color:var(--mut)">${t.sets} Sätze · ${fmt(t.vol)} kg Volumen. Nicht abgehakte Sätze werden nicht gespeichert.</small>`,'Beenden',()=>{if(finish()){tab='hist';render();toast('Training gespeichert 💪')}});break}
     case 'addset':{const e=d.ex[i],l=e.sets[e.sets.length-1];e.sets.push({kg:l?l.kg:0,r:l?l.r:0,rir:'',t:'A',d:false});save();render();break}
-    case 'dupset':{const e=d.ex[i],l=e.sets[e.sets.length-1];if(l){e.sets.push({kg:l.kg,r:l.r,rir:l.rir,t:l.t==='W'?'A':l.t,d:false});save();render()}break}
     case 'delset':{const e=d.ex[i];if(e.sets.length>1){e.sets.pop();save();render()}break}
     case 'type':{const s=d.ex[i].sets[k];s.t=s.t==='W'?'A':s.t==='A'||!s.t?'D':'W';if(s.t==='D'&&false)0;save();render();break}
     case 'done':{
@@ -509,6 +507,7 @@ app.addEventListener('click',e=>{
       const el=document.getElementById('bwIn'),kg=num(el.value);if(kg<=0)break;
       S.bw=S.bw.filter(x=>x.date!==todayStr());S.bw.push({date:todayStr(),kg});save();render();toast('Gewicht gespeichert');break}
     case 'rest':S.rest=+v;save();render();break;
+    case 'rirtog':S.rir=!S.rir;save();render();break;
     case 'addcustom':{
       const n=document.getElementById('cName').value.trim();if(!n)break;
       const id='c-'+SLUG(n)+'-'+uid().slice(0,3);
@@ -544,7 +543,6 @@ app.addEventListener('input',e=>{
 app.addEventListener('change',e=>{
   const t=e.target,d=S.draft;
   if(t.id==='dDate'&&d&&t.value){d.date=t.value;save()}
-  else if(t.id==='dSplit'&&d){d.split=t.value;save()}
   else if(t.id==='pEx'){progEx=t.value;render()}
 });
 
