@@ -388,6 +388,16 @@ function vPlan(){
     <div class="macro-plan"><span class="label"><i class="dot" style="background:var(--carbs)"></i>Kohlenhydrate</span><b>${de(p.carbs)} g</b></div>
     <div class="macro-plan"><span class="label"><i class="dot" style="background:var(--fat)"></i>Fett</span><b>${de(p.fat)} g</b></div>
   </div></div>
+  <div class="card"><span class="label">Eigene Ziele festlegen</span>
+   <p class="small muted">Überschreibe die Vorschläge mit deinen eigenen Werten.</p>
+   <div class="grid2">
+    <label class="mini">Kalorien<input id="gK" inputmode="numeric" value="${p.kcal}"></label>
+    <label class="mini">Protein (g)<input id="gP" inputmode="numeric" value="${p.protein}"></label>
+    <label class="mini">Kohlenhydrate (g)<input id="gC" inputmode="numeric" value="${p.carbs}"></label>
+    <label class="mini">Fett (g)<input id="gF" inputmode="numeric" value="${p.fat}"></label>
+   </div>
+   <p class="small muted" id="gMsg" aria-live="polite"></p>
+   <button class="btn ghost" data-act="mygoals">Eigene Werte übernehmen</button></div>
   <div class="card"><span class="label">Wasser pro Tag</span><div class="stat">${de(p.water,1)} <span style="font-size:20px">Liter</span></div></div>
   ${tempo?`<div class="card"><span class="label">Dein Tempo</span>${tempo}</div>`:''}
   <div class="card"><span class="label">Dein Verbrauch</span><div class="grid2"><div><b>${de(p.bmr)} kcal</b><p class="small muted">Grundumsatz</p></div><div><b>${de(p.tdee)} kcal</b><p class="small muted">Gesamtumsatz</p></div></div></div>
@@ -495,7 +505,7 @@ function vTracker(){
   </div></details>
 
   ${installEvt?installHint():''}
-  <button class="link" data-act="showplan" style="text-align:center">Plan ansehen oder ändern</button>
+  <button class="link" data-act="showplan" style="text-align:center">Kalorien &amp; Ziele ändern</button>
   <p class="foot">Ich bin eine KI, kein medizinisches Fachpersonal. Sprich mit deinem Hausarzt, bevor du eine neue Ernährungsform startest.</p>`;
 }
 function isDark(){const t=document.documentElement.dataset.theme;if(t)return t==='dark';return matchMedia('(prefers-color-scheme: dark)').matches;}
@@ -817,6 +827,15 @@ document.addEventListener('click',e=>{
   else if(a==='stopback'){view='q';qi=Math.max(0,visQ().findIndex(q=>q.k===b.dataset.k));render();}
   else if(a==='adjust'){A=Object.assign({},(pendingPlan||S).profile);view='q';qi=0;render();}
   else if(a==='accept'){if(pendingPlan){S.profile=pendingPlan.profile;S.plan=pendingPlan.plan;pendingPlan=null;persist();}view='tracker';sel=today();render();}
+  else if(a==='mygoals'){
+    const g=id=>num(document.getElementById(id).value),k=g('gK'),pr=g('gP'),ca=g('gC'),f=g('gF'),m=document.getElementById('gMsg');
+    if(k==null||k<800||k>6000){m.textContent='Bitte Kalorien zwischen 800 und 6000 eintragen.';return;}
+    if([pr,ca,f].some(v=>v==null||v<0||v>1000)){m.textContent='Bitte Protein, Kohlenhydrate und Fett in Gramm eintragen.';return;}
+    const t=pendingPlan?pendingPlan.plan:S.plan;
+    Object.assign(t,{kcal:Math.round(k),protein:Math.round(pr),carbs:Math.round(ca),fat:Math.round(f)});
+    if(!pendingPlan)persist();
+    render();const m2=document.getElementById('gMsg');if(m2)m2.textContent='Gespeichert: '+Math.round(k)+' kcal.';
+  }
   else if(a==='showplan'){pendingPlan=null;view='plan';render();}
   else if(a==='training'){location.href='training.html';}
   else if(a==='theme'){const t=isDark()?'light':'dark';document.documentElement.dataset.theme=t;lsSet('coach-theme',t);render();}
