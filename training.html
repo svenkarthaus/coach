@@ -7,16 +7,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Coach">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#EEF2F9">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0B0F">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F4F0">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0C10">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <title>Training</title>
 <style>
-:root{--bg:#EEF2F9;--card:#FFFFFF;--card2:#EAF1FF;--line:#E2E8F2;--tx:#0F172A;--mut:#5B6880;--acc:#2563EB;--acc2:#4F8BFF;--ok:#16a34a;--warn:#d97706;--pr:#ffd23f;--okbg:#e3f6ea;--okline:#86d5a0;--hdr:rgba(238,242,249,.92);--shadow:0 6px 24px rgba(37,99,235,.08);color-scheme:light}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0B0B0F;--card:#1A1A1F;--card2:#24252d;--line:rgba(255,255,255,.1);--tx:#F5F6FA;--mut:#A0A3B1;--acc:#4F8BFF;--acc2:#2563EB;--ok:#2ecc71;--warn:#f5c542;--okbg:#16301f;--okline:#1f6b3a;--hdr:rgba(11,11,15,.92);--shadow:none;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0B0B0F;--card:#1A1A1F;--card2:#24252d;--line:rgba(255,255,255,.1);--tx:#F5F6FA;--mut:#A0A3B1;--acc:#4F8BFF;--acc2:#2563EB;--ok:#2ecc71;--warn:#f5c542;--okbg:#16301f;--okline:#1f6b3a;--hdr:rgba(11,11,15,.92);--shadow:none;color-scheme:dark}
+:root{--bg:#F7F4F0;--card:#FFFFFF;--card2:#FFF0E6;--line:#EBE3DA;--tx:#1A1512;--mut:#6F655C;--acc:#EA580C;--acc2:#FF4D6D;--ok:#16a34a;--warn:#d97706;--pr:#ffd23f;--okbg:#e3f6ea;--okline:#86d5a0;--hdr:rgba(247,244,240,.92);--shadow:0 6px 24px rgba(234,88,12,.08);color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0B0C10;--card:#16181F;--card2:#22252E;--line:rgba(255,255,255,.09);--tx:#F5F5F7;--mut:#9A9CA8;--acc:#FF7A3D;--acc2:#FF4D6D;--ok:#2ecc71;--warn:#f5c542;--okbg:#16301f;--okline:#1f6b3a;--hdr:rgba(11,12,16,.92);--shadow:none;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B0C10;--card:#16181F;--card2:#22252E;--line:rgba(255,255,255,.09);--tx:#F5F5F7;--mut:#9A9CA8;--acc:#FF7A3D;--acc2:#FF4D6D;--ok:#2ecc71;--warn:#f5c542;--okbg:#16301f;--okline:#1f6b3a;--hdr:rgba(11,12,16,.92);--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{padding:0 0 calc(170px + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
@@ -54,7 +54,7 @@ main{padding:12px 14px}
 .sethead.norir,.set.norir{grid-template-columns:34px 1fr 1fr 48px}
 .mus{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .mt{padding:20px 8px;font-size:17px;font-weight:700;border-radius:16px;background:var(--card2)}
-.mt:active{background:var(--acc);color:#fff}
+.mt:active{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
 .sumline{font-weight:700;font-size:15px;align-self:center}
 .sethead{font-size:10.5px;color:var(--mut);text-transform:uppercase;text-align:center;margin:8px 0 4px;letter-spacing:.4px}
 .set{margin-bottom:6px}
@@ -320,7 +320,7 @@ function vProg(){
     <select id="pEx" style="margin:8px 0">${ids.map(i=>`<option value="${i}" ${i===progEx?'selected':''}>${esc(exInfo(i).name)}</option>`).join('')}</select>
     <div id="pStats" class="stats" style="grid-template-columns:repeat(3,1fr)"></div>
     <div id="pChart"></div>
-    <div class="legend"><span><i style="background:#2563EB"></i>Geschätztes 1RM</span><span><i style="background:#14B8A6"></i>Top-Satz kg</span></div>
+    <div class="legend"><span><i style="background:#FF6A2B"></i>Geschätztes 1RM</span><span><i style="background:#14B8A6"></i>Top-Satz kg</span></div>
   </div>`:`<div class="empty">Trage ein paar Trainings ein – dann siehst du hier deine Kraftkurve.</div>`}
   <div class="card muscles"><h3>Sätze pro Muskel – diese Woche</h3>
     <div class="h">Grüne Zone = 10–20 harte Sätze/Woche, der bewährte Bereich für Muskelaufbau. Vorwoche in Klammern.</div>
@@ -364,7 +364,7 @@ function drawProg(){
     });
     const ps=document.getElementById('pStats');
     if(ps)ps.innerHTML=`<div class="stat"><b>${fmt(bestKg(progEx))}</b><span>Max kg</span></div><div class="stat"><b>${fmt(Math.round(bestE1(progEx)*10)/10)}</b><span>Bestes 1RM</span></div><div class="stat"><b>${fmt(Math.round(vol/1000*10)/10)} t</b><span>Gesamtvol.</span></div>`;
-    const c=document.getElementById('pChart');if(c)lineChart(c,[{color:'#2563EB',pts:pts1},{color:'#14B8A6',pts:pts2}],{label:'Kraftverlauf'});
+    const c=document.getElementById('pChart');if(c)lineChart(c,[{color:'#FF6A2B',pts:pts1},{color:'#14B8A6',pts:pts2}],{label:'Kraftverlauf'});
   }
   const b=document.getElementById('bwChart');
   if(b)lineChart(b,[{color:'#F59E0B',pts:S.bw.map(x=>({x:parseD(x.date),y:x.kg}))}],{label:'Körpergewicht'});
