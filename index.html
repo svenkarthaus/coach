@@ -583,10 +583,10 @@ function fromOFF(p){
 function netError(status){
   if(!navigator.onLine)return 'Für die Suche brauchst du Internet. Grundnahrungsmittel findest du auch offline.';
   if(status===429)return 'Das waren viele Anfragen in kurzer Zeit. Warte eine Minute und versuch es noch einmal.';
-  return 'Die Datenbank antwortet gerade nicht. Versuch es gleich noch einmal oder trag es von Hand ein.';
+  return 'Die Datenbank ist gerade überlastet. Versuch es in ein paar Minuten noch einmal oder nutze „Eigenes Essen eintragen“. Grundnahrungsmittel findest du auch ohne Datenbank.';
 }
-async function getJSON(url){
-  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000);
+async function getJSON(url,ms){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),ms||20000);
   try{const r=await fetch(url,{signal:ctl.signal,headers:{Accept:'application/json'}});return {status:r.status,data:r.ok||r.status===404?await r.json().catch(()=>null):null};}
   finally{clearTimeout(t);}
 }
@@ -599,14 +599,25 @@ function resultsHtml(){
 async function searchFood(){
   const q=foodQ.trim();if(q.length<2||searching)return;
   searching=true;picked=null;foodMsg='';render();
-  try{
-    const {status,data}=await getJSON(`${OFF}/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&lc=de&cc=de&fields=${OFF_FIELDS}`);
-    if(!data){foodMsg=netError(status);}
-    else{
-      online=(data.products||[]).map(fromOFF).filter(f=>f.kcal!==null&&f.name!=='Unbekanntes Produkt').slice(0,12);
-      if(!online.length)foodMsg=`Online habe ich zu „${q}“ nichts gefunden.`;
-    }
-  }catch(e){foodMsg=netError();}
+  let status=0,got=null;
+  const enc=encodeURIComponent(q);
+  // Zwei Quellen nacheinander: neue Suche zuerst, die alte als Reserve (die ist oft überlastet)
+  const sources=[
+    async()=>{const r=await getJSON(`https://search.openfoodfacts.org/search?q=${enc}&page_size=20&langs=de&fields=${OFF_FIELDS}`,12000);return {status:r.status,list:r.data&&Array.isArray(r.data.hits)?r.data.hits:null};},
+    async()=>{const r=await getJSON(`${OFF}/cgi/search.pl?search_terms=${enc}&search_simple=1&action=process&json=1&page_size=20&lc=de&cc=de&fields=${OFF_FIELDS}`,15000);return {status:r.status,list:r.data&&r.data.products?r.data.products:null};}
+  ];
+  for(const src of sources){
+    try{
+      const r=await src();status=r.status||status;
+      if(r.list){
+        const list=r.list.map(fromOFF).filter(f=>f.kcal!==null&&f.name!=='Unbekanntes Produkt').slice(0,12);
+        if(got===null)got=[];
+        if(list.length){got=list;break;}
+      }
+    }catch(e){}
+  }
+  if(got===null)foodMsg=netError(status);
+  else{online=got;if(!online.length)foodMsg=`Online habe ich zu „${q}“ nichts gefunden.`;}
   searching=false;render();
 }
 async function lookup(code){
