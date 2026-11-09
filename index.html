@@ -193,6 +193,7 @@ details>div{display:flex;flex-direction:column;gap:10px;padding-top:12px}
   <div class="island" aria-hidden="true"></div>
   <div class="status" aria-hidden="true"><span id="clock"></span><span class="row" style="gap:6px"><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="14" height="7" rx="1.5" fill="currentColor"/><rect x="20" y="3.5" width="2" height="4" rx="1" fill="currentColor" opacity=".5"/></svg></span></div>
   <main class="screen" id="app"></main>
+  <input type="file" id="foodPhoto" accept="image/*" hidden>
   <nav class="tabbar" id="tabbar" hidden aria-label="Hauptmenü">
     <button data-act="tab-diary" id="tabD"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>Tagebuch</button>
     <button data-act="tab-train"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>Training</button>
@@ -517,7 +518,10 @@ function vTracker(){
    ${recent.length?`<span class="label">Nochmal eintragen</span><div class="again">${recent.map((r,i)=>`<button class="chip" data-act="again" data-i="${i}">${esc(r.name)} · ${de(r.kcal)}</button>`).join('')}</div>`:''}
    <form id="foodForm" class="searchrow"><input id="foodQ" type="search" enterkeyhint="search" placeholder="Lebensmittel suchen" aria-label="Lebensmittel suchen" autocomplete="off" value="${esc(foodQ)}"><button class="btn small" ${searching?'disabled':''}>${searching?'Suche …':'Suchen'}</button></form>
    <button class="btn ghost scan" data-act="scan">${icon.code}Barcode scannen</button>
+   <button class="btn ghost scan" data-act="photo">${icon.cam}Essen per Foto erkennen</button>
+   ${photoPanel()}
    ${picked?pickPanel():`<div class="results" id="results">${resultsHtml()}</div>`}
+   <button class="link small" data-act="aikey">Foto-Erkennung einrichten / ändern</button>
    <p class="small muted" id="foodMsg" ${foodMsg?'':'hidden'}>${esc(foodMsg)}</p>
    <button class="btn ghost" data-act="manual">${manualOpen?'Eingabe schließen':'Eigenes Essen eintragen (kcal, Protein …)'}</button>
    ${manualOpen?`<form id="manual" class="grid2" novalidate>
@@ -567,7 +571,8 @@ function render(){
   if(view==='tracker'){
     const ff=$('#foodForm');if(ff)ff.addEventListener('submit',e=>{e.preventDefault();searchFood();});
     const fq=$('#foodQ');if(fq)fq.addEventListener('input',()=>{foodQ=fq.value;online=[];foodMsg='';const m=$('#foodMsg');if(m)m.hidden=true;const r=$('#results');if(r)r.innerHTML=resultsHtml();});
-    const pk=$('.pick');if(pk)pk.addEventListener('input',pickInput);
+    const pk=$('.pick:not(#photoPanel)');if(pk)pk.addEventListener('input',pickInput);
+    const pp=$('#photoPanel');if(pp){pp.addEventListener('input',photoInput);pp.addEventListener('change',photoInput);}
     const mf=$('#manual');if(mf){mf.addEventListener('submit',manualAdd);mf.addEventListener('input',e=>{fd[e.target.id]=e.target.value;});}
     requestAnimationFrame(()=>requestAnimationFrame(animate));
   }
@@ -588,6 +593,67 @@ function animate(){
 const clamp=(v,m)=>Math.max(0,Math.min(m,Math.round(Number(v)||0)));
 function addEntry(o){
   day(sel).entries.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),meal:o.meal||meal,name:String(o.name||'Eintrag').slice(0,80),portion:String(o.portion||'').slice(0,40),kcal:clamp(o.kcal,10000),protein:clamp(o.protein,1000),carbs:clamp(o.carbs,1000),fat:clamp(o.fat,1000)});
+}
+/* ---------- Essen per Foto (optional, eigener API-Schlüssel) ---------- */
+let photo={busy:false,items:null,msg:'',setup:false,hint:''};
+const AIKEY='coach-ai-key';
+const getKey=()=>{try{return localStorage.getItem(AIKEY)||'';}catch(e){return '';}};
+const PHOTO_PROMPT='Du bist Ernährungsberater. Erkenne alle Lebensmittel und Getränke auf dem Foto. Schätze die abgebildete Portion und gib die Nährwerte für genau diese Menge an. Antworte NUR mit JSON in diesem Format, ohne weiteren Text: {"items":[{"name":"Lebensmittel auf Deutsch","portion":"z. B. ca. 150 g","kcal":0,"protein":0,"carbs":0,"fat":0}],"hinweis":"kurzer Satz, wie sicher die Schätzung ist"}. Protein, Kohlenhydrate und Fett in Gramm, kcal als Zahl. Fasse zusammengehörige Zutaten eines Gerichts sinnvoll zusammen (höchstens 6 Einträge). Ist kein Essen zu sehen, gib "items":[] zurück.';
+async function shrinkImage(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const s=Math.min(1,1280/Math.max(img.width,img.height)),cv=document.createElement('canvas');
+    cv.width=Math.max(1,Math.round(img.width*s));cv.height=Math.max(1,Math.round(img.height*s));
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    return cv.toDataURL('image/jpeg',.82).split(',')[1];
+  }finally{URL.revokeObjectURL(url);}
+}
+async function analyzePhoto(file){
+  photo={busy:true,items:null,msg:'',setup:false,hint:''};render();
+  const t0=setTimeout(()=>{},0);clearTimeout(t0);
+  try{
+    const b64=await shrinkImage(file),ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),45000);
+    let r;
+    try{
+      r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:ctl.signal,headers:{'content-type':'application/json','x-api-key':getKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-5-5',max_tokens:900,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:PHOTO_PROMPT}]}]})});
+    }finally{clearTimeout(to);}
+    if(r.status===401||r.status===403){photo.msg='Der API-Schlüssel wurde abgelehnt. Prüfe ihn unter „Foto-Erkennung einrichten“.';}
+    else if(r.status===429){photo.msg='Zu viele Anfragen. Warte kurz und versuch es noch einmal.';}
+    else if(r.status===402||r.status===400){let m='';try{m=(await r.json()).error.message||'';}catch(e){}photo.msg=/credit|balance/i.test(m)?'Auf deinem Konto ist kein Guthaben mehr. Lade es in der Anthropic Console auf.':'Die Anfrage wurde abgelehnt. '+m.slice(0,120);}
+    else if(!r.ok){photo.msg='Die Foto-Erkennung antwortet gerade nicht. Versuch es gleich noch einmal.';}
+    else{
+      const j=await r.json(),txt=(j.content||[]).map(x=>x.text||'').join(''),m=txt.match(/\{[\s\S]*\}/);
+      const o=m?JSON.parse(m[0]):null;
+      const items=((o&&o.items)||[]).slice(0,6).map(x=>({on:true,name:String(x.name||'Essen').slice(0,60),portion:String(x.portion||'').slice(0,30),kcal:Math.round(Number(x.kcal)||0),protein:Math.round((Number(x.protein)||0)*10)/10,carbs:Math.round((Number(x.carbs)||0)*10)/10,fat:Math.round((Number(x.fat)||0)*10)/10}));
+      if(!items.length)photo.msg='Auf dem Foto konnte ich kein Essen erkennen. Versuch es mit mehr Licht und von oben.';
+      else{photo.items=items;photo.hint=String((o&&o.hinweis)||'').slice(0,160);}
+    }
+  }catch(e){photo.msg=navigator.onLine?'Das hat nicht geklappt. Versuch es noch einmal oder trag das Essen von Hand ein.':'Für die Foto-Erkennung brauchst du Internet.';}
+  photo.busy=false;render();
+  const el=document.getElementById('photoPanel');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center',behavior:'smooth'});
+}
+function photoPanel(){
+  if(photo.busy)return '<div class="pick" id="photoPanel"><b>Foto wird analysiert …</b><span class="small muted">Das dauert etwa 5–15 Sekunden.</span></div>';
+  if(photo.setup)return `<div class="pick" id="photoPanel"><b>Foto-Erkennung einrichten</b>
+    <p class="small muted">Dafür brauchst du einen eigenen API-Schlüssel von console.anthropic.com (das ist nicht dein Claude-Abo). Jede Analyse kostet meist nur wenige Cent. Der Schlüssel bleibt auf diesem Handy, dein Foto wird zur Auswertung an Anthropic gesendet.</p>
+    <label class="mini">API-Schlüssel<input id="aiKeyIn" type="password" autocomplete="off" placeholder="sk-ant-…" value="${esc(getKey())}"></label>
+    <p class="small" id="aiKeyMsg" aria-live="polite">${esc(photo.msg)}</p>
+    <div class="row"><button class="btn small" data-act="aikey-save">Speichern &amp; Foto wählen</button>${getKey()?'<button class="btn ghost small" data-act="aikey-del">Schlüssel löschen</button>':''}<button class="btn ghost small" data-act="photoclose">Schließen</button></div></div>`;
+  if(photo.items)return `<div class="pick" id="photoPanel"><b>Erkannt – bitte prüfen</b><span class="small muted">Das sind Schätzungen. Passe Werte an oder wähle Einträge ab.</span>
+    ${photo.items.map((x,i)=>`<div style="border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px"><label class="row" style="gap:8px;flex-wrap:nowrap"><input type="checkbox" data-pi="${i}" data-pf="on" ${x.on?'checked':''}><span><b>${esc(x.name)}</b>${x.portion?` <span class="muted small">· ${esc(x.portion)}</span>`:''}</span></label>
+      <div class="grid2"><label class="mini">Kalorien<input data-pi="${i}" data-pf="kcal" inputmode="numeric" value="${x.kcal}"></label><label class="mini">Protein (g)<input data-pi="${i}" data-pf="protein" inputmode="decimal" value="${x.protein}"></label>
+      <label class="mini">Kohlenh. (g)<input data-pi="${i}" data-pf="carbs" inputmode="decimal" value="${x.carbs}"></label><label class="mini">Fett (g)<input data-pi="${i}" data-pf="fat" inputmode="decimal" value="${x.fat}"></label></div></div>`).join('')}
+    ${photo.hint?`<p class="small muted">${esc(photo.hint)}</p>`:''}
+    <div class="row"><button class="btn small" data-act="photoadd">Ausgewählte eintragen</button><button class="btn ghost small" data-act="photoclose">Verwerfen</button></div></div>`;
+  if(photo.msg)return `<div class="pick" id="photoPanel"><p class="small">${esc(photo.msg)}</p><div class="row"><button class="btn ghost small" data-act="photoclose">OK</button></div></div>`;
+  return '';
+}
+function photoInput(e){
+  const t=e.target,i=t.dataset.pi,f=t.dataset.pf;if(i==null||!photo.items)return;
+  const x=photo.items[+i];if(!x)return;
+  if(f==='on')x.on=t.checked;else x[f]=t.value;
 }
 function manualAdd(e){
   e.preventDefault();
@@ -841,6 +907,7 @@ async function scanFile(file){
   }catch(e){st.textContent='Dieses Foto konnte ich nicht lesen. Versuch es mit einem neuen.';}
 }
 $('#scanPhoto').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)scanFile(f);});
+$('#foodPhoto').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)analyzePhoto(f);});
 $('#codeForm').addEventListener('submit',e=>{
   e.preventDefault();const c=$('#codeIn').value.replace(/\D/g,'');
   if(c.length<8||c.length>14){$('#scanStatus').textContent='Die Nummer hat 8 bis 13 Stellen.';return;}
@@ -908,6 +975,12 @@ document.addEventListener('click',e=>{
   else if(a==='meal'){meal=b.dataset.v;render();}
   else if(a==='install'&&installEvt){const ev=installEvt;installEvt=null;ev.prompt();render();}
   else if(a==='scan')openScanner();
+  else if(a==='photo'){if(!getKey()){photo={busy:false,items:null,msg:'',setup:true,hint:''};render();const el=document.getElementById('photoPanel');if(el)el.scrollIntoView({block:'center'});}else document.getElementById('foodPhoto').click();}
+  else if(a==='aikey-save'){const v=(document.getElementById('aiKeyIn').value||'').trim();if(!/^sk-ant-[\w-]{20,}$/.test(v)){photo.msg='Das sieht nicht wie ein Anthropic-Schlüssel aus. Er beginnt mit „sk-ant-“.';render();return;}try{localStorage.setItem(AIKEY,v);}catch(e){photo.msg='Der Schlüssel konnte nicht gespeichert werden.';render();return;}photo={busy:false,items:null,msg:'',setup:false,hint:''};render();document.getElementById('foodPhoto').click();}
+  else if(a==='aikey-del'){try{localStorage.removeItem(AIKEY);}catch(e){}photo={busy:false,items:null,msg:'Schlüssel gelöscht.',setup:true,hint:''};render();}
+  else if(a==='photoclose'){photo={busy:false,items:null,msg:'',setup:false,hint:''};render();}
+  else if(a==='photoadd'){const sel=(photo.items||[]).filter(x=>x.on&&num(x.kcal)!==null);if(!sel.length){photo.msg='Wähle mindestens einen Eintrag aus.';render();return;}sel.forEach(x=>addEntry({name:x.name,portion:x.portion,kcal:num(x.kcal),protein:num(x.protein),carbs:num(x.carbs),fat:num(x.fat)}));logMsg=sel.length+(sel.length>1?' Einträge':' Eintrag')+' vom Foto eingetragen.';logErr=false;photo={busy:false,items:null,msg:'',setup:false,hint:''};persist();render();}
+  else if(a==='aikey'){photo={busy:false,items:null,msg:'',setup:true,hint:''};render();}
   else if(a==='scanclose')closeScanner();
   else if(a==='food'){const f=shown[Number(b.dataset.i)];if(f)pickFood(f);}
   else if(a==='pickback'){picked=null;render();}
