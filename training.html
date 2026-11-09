@@ -55,6 +55,7 @@ main{padding:12px 14px}
 .mus{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .mt{padding:20px 8px;font-size:17px;font-weight:700;border-radius:16px;background:var(--card2)}
 .mt:active{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+.quote{background:linear-gradient(135deg,rgba(255,106,43,.16),rgba(255,77,109,.16));border-radius:14px;padding:12px 14px;margin-bottom:14px;font-weight:700;font-size:15px;line-height:1.35}
 .sumline{font-weight:700;font-size:15px;align-self:center}
 .sethead{font-size:10.5px;color:var(--mut);text-transform:uppercase;text-align:center;margin:8px 0 4px;letter-spacing:.4px}
 .set{margin-bottom:6px}
@@ -161,6 +162,9 @@ const fmt=n=>(Math.round(n*100)/100).toLocaleString('de-DE');
 const e1rm=(kg,r)=>r<=0||kg<=0?0:(r===1?kg:kg*(1+r/30));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+const QUOTES=["Heute ist ein guter Tag für einen neuen Rekord.", "Disziplin schlägt Motivation – jeden Tag.", "Ein Satz mehr als gestern. Das ist der ganze Plan.", "Muskeln wachsen in der Pause, aber verdient werden sie im Training.", "Kein Training war je umsonst.", "Du musst nicht perfekt sein, nur konsequent.", "Der schwerste Satz ist der erste.", "Kleine Schritte, jeden Tag, große Ergebnisse.", "Heute durchziehen, morgen danken.", "Fortschritt ist leise. Bleib dran.", "Mach es so, dass dein zukünftiges Ich stolz ist.", "Wiederholung für Wiederholung.", "Das Gewicht bewegt sich nicht von allein. Du schon.", "Jede Wiederholung zählt.", "Stärke beginnt im Kopf.", "Müde? Fang trotzdem an.", "Ernährung baut auf, Training formt.", "Rückschläge sind Teil des Plans.", "Du bist stärker als deine Ausreden.", "Aufwärmen, aufdrehen, abliefern.", "Dein Körper kann mehr, als dein Kopf glaubt.", "Jeder Profi hat mal als Anfänger angefangen.", "Bleib hungrig auf Fortschritt.", "Eintragen, steigern, wiederholen.", "Wer dranbleibt, gewinnt.", "Heute besser als gestern. Morgen besser als heute.", "Der Pump vergeht, die Disziplin bleibt.", "Ein Training mehr bringt dich näher ans Ziel."];
+const quoteOfDay=()=>QUOTES[Math.floor((Date.now()-new Date().getTimezoneOffset()*60000)/864e5)%QUOTES.length];
+const randQuote=()=>QUOTES[Math.floor(Math.random()*QUOTES.length)];
 let S={v:1,workouts:[],draft:null,custom:[],bw:[],rest:90,targets:{}};
 let tab='train';
 
@@ -172,6 +176,7 @@ const KEY='coach-training-v1';
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){const x=document.getElementById('sync');if(x)x.textContent='⚠ Speichern nicht möglich'}}
 function loadLocal(){
   try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(S,JSON.parse(r))}}catch(e){}
+  S.workouts.forEach(w=>w.ex.forEach(e=>e.sets.forEach(s=>{if(s.d===undefined)s.d=true})));
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 }
 
@@ -221,6 +226,7 @@ document.getElementById('nav').onclick=e=>{const b=e.target.closest('button');if
 function vTrain(){
   const d=S.draft;
   if(!d)return `<div class="card">
+    <div class="quote">„${esc(quoteOfDay())}“</div>
     <h2 style="margin-bottom:2px">Was trainierst du heute?</h2>
     <div class="h">Tippe einen Muskel an und wähle deine Übung.</div>
     <div class="mus">${MUSCLES.map(m=>`<button class="mt" data-a="muscle" data-v="${m}">${m}</button>`).join('')}</div>
@@ -470,7 +476,7 @@ function finish(){
   d.ex=d.ex.filter(e=>e.sets.length);
   if(!d.ex.length){toast('Keine abgehakten Sätze');return false}
   const w={id:d.id,date:d.date,split:splitName(d),min:Math.max(1,Math.round((Date.now()-d.start)/60000)),note:d.note||'',
-    ex:d.ex.map(e=>({id:e.id,sets:e.sets.map(s=>({kg:s.kg,r:s.r,rir:s.rir===''?'':s.rir,t:s.t||'A'}))}))};
+    ex:d.ex.map(e=>({id:e.id,sets:e.sets.map(s=>({kg:s.kg,r:s.r,rir:s.rir===''?'':s.rir,t:s.t||'A',d:true}))}))};
   S.workouts=S.workouts.filter(x=>x.id!==w.id);S.workouts.push(w);S.draft=null;
   save();stopTimer();return true;
 }
@@ -489,7 +495,7 @@ app.addEventListener('click',e=>{
     case 'discard':ask('Training wirklich verwerfen?','Verwerfen',()=>{S.draft=null;save();stopTimer();render()},true);break;
     case 'finish':{
       const t=totals(d);
-      ask(`Training beenden?<br><small style="color:var(--mut)">${t.sets} Sätze · ${fmt(t.vol)} kg Volumen. Nicht abgehakte Sätze werden nicht gespeichert.</small>`,'Beenden',()=>{if(finish()){tab='hist';render();toast('Training gespeichert 💪')}});break}
+      ask(`Training beenden?<br><small style="color:var(--mut)">${t.sets} Sätze · ${fmt(t.vol)} kg Volumen. Nicht abgehakte Sätze werden nicht gespeichert.</small>`,'Beenden',()=>{if(finish()){tab='hist';render();sheet(`<h2 style="margin-bottom:6px">Stark! 💪</h2><p style="margin:0 0 10px;font-weight:600">${t.sets} Sätze · ${fmt(t.vol)} kg Volumen</p><div class="quote">„${esc(randQuote())}“</div><button class="pri" style="width:100%" id="okB">Weiter</button>`);document.getElementById('okB').onclick=closeModal}});break}
     case 'addset':{const e=d.ex[i],l=e.sets[e.sets.length-1];e.sets.push({kg:l?l.kg:0,r:l?l.r:0,rir:'',t:'A',d:false});save();render();break}
     case 'delset':{const e=d.ex[i];if(e.sets.length>1){e.sets.pop();save();render()}break}
     case 'type':{const s=d.ex[i].sets[k];s.t=s.t==='W'?'A':s.t==='A'||!s.t?'D':'W';if(s.t==='D'&&false)0;save();render();break}
